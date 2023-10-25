@@ -6,9 +6,10 @@ import edu.au.jacobi.pattern.*;
 import java.io.*;
 import java.util.*;
 
-public class Sequential
+public class Parallel
 {
     private static HashMap<String, Sigma70Consensus> consensus = new HashMap<String, Sigma70Consensus>();
+    // Matiching function containts mutable state !!
     private static Series sigma70_pattern = Sigma70Definition.getSeriesAll_Unanchored(0.7);
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();
     private static byte[] complement = new byte['z'];
@@ -21,7 +22,7 @@ public class Sequential
         complement['A'] = 'T'; complement['a'] = 't';
     }
 
-
+                    
     private static List<Gene> ParseReferenceGenes(String referenceFile) throws FileNotFoundException, IOException
     {
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(referenceFile)));
@@ -49,7 +50,7 @@ public class Sequential
     {
         int upStreamDistance = 250;
         if (gene.location < upStreamDistance)
-            upStreamDistance = gene.location-1;
+           upStreamDistance = gene.location-1;
 
         if (gene.strand == 1)
             return new NucleotideSequence(java.util.Arrays.copyOfRange(dna.bytes, gene.location-upStreamDistance-1, gene.location-1));
@@ -95,27 +96,31 @@ public class Sequential
     }
 
     public static HashMap<String, Sigma70Consensus> run(String referenceFile, String dir) throws FileNotFoundException, IOException
-    {
+    {             
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
-        for (String filename : ListGenbankFiles(dir))
-        {
-            System.out.println(filename);
-            GenbankRecord record = Parse(filename);
-            for (Gene referenceGene : referenceGenes)
-            {
-                System.out.println(referenceGene.name);
-                for (Gene gene : record.genes)
-                    if (Homologous(gene.sequence, referenceGene.sequence))
-                    {
-                        NucleotideSequence upStreamRegion = GetUpstreamRegion(record.nucleotides, gene);
-                        Match prediction = PredictPromoter(upStreamRegion);
-                        if (prediction != null)
-                        {
-                            consensus.get(referenceGene.name).addMatch(prediction);
-                            consensus.get("all").addMatch(prediction);
+        for (String filename : ListGenbankFiles(dir)) {
+            new Thread(() -> {
+                System.out.println(filename);
+                GenbankRecord record = null;
+                try {
+                    record = Parse(filename);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                for (Gene referenceGene : referenceGenes) {
+                    System.out.println(referenceGene.name);
+                    for (Gene gene : record.genes)
+                        if (Homologous(gene.sequence, referenceGene.sequence)) {
+                            NucleotideSequence upStreamRegion = GetUpstreamRegion(record.nucleotides, gene);
+                            Match prediction = PredictPromoter(upStreamRegion);
+                            if (prediction != null) {
+                                consensus.get(referenceGene.name).addMatch(prediction);
+                                consensus.get("all").addMatch(prediction);
+                            }
                         }
-                    }
-            }
+                }
+            }).start();
         }
 
         return consensus;
