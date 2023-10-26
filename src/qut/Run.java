@@ -8,11 +8,13 @@ import java.util.Objects;
 
 public class Run {
 
-    public static void main(String[] args) throws FileNotFoundException, IOException
-    {
+    public static void main(String[] args) throws FileNotFoundException, IOException, InterruptedException {
         Map<String, Sigma70Consensus> sequentialConsensus = Sequential.run("referenceGenes.list", "Ecoli");
-        //Map<String, Sigma70Consensus> parallelConsensus = Parallel.run("referenceGenes.list", "Ecoli");
+        ParallelByGenbankFile predictor = new ParallelByGenbankFile();
+        Map<String, Sigma70Consensus> parallelConsensus = predictor.predict("referenceGenes.list", "Ecoli");
+        compareByString(parallelConsensus);
         compareByString(sequentialConsensus);
+        compareDirect(parallelConsensus, sequentialConsensus);
     }
 
 
@@ -50,14 +52,11 @@ public class Run {
         }
     }
     private static void compareDirect(Map<String, Sigma70Consensus> sequentialConsensus, Map<String, Sigma70Consensus> parallelConsensus) {
-        if (sequentialConsensus.equals(parallelConsensus)) {
-            System.out.println("Direct compare passed!");
-            System.out.println("Sequential:");
-            printer(sequentialConsensus);
-            System.out.println("Parallel:");
-            printer(parallelConsensus);
-        }
-
+        System.out.println(sequentialConsensus.equals(parallelConsensus)? "Direct compare passed!" : "Direct compare failed!");
+        System.out.println("Sequential:");
+        printer(sequentialConsensus);
+        System.out.println("Parallel:");
+        printer(parallelConsensus);
     }
 
 }
