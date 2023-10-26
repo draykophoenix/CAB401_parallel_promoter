@@ -9,14 +9,13 @@ import java.util.Objects;
 public class Run {
 
     public static void main(String[] args) throws FileNotFoundException, IOException, InterruptedException {
-        Map<String, Sigma70Consensus> sequentialConsensus = Sequential.run("referenceGenes.list", "Ecoli");
-        ParallelByGenbankFile predictor = new ParallelByGenbankFile();
-        Map<String, Sigma70Consensus> parallelConsensus = predictor.predict("referenceGenes.list", "Ecoli");
-        compareByString(parallelConsensus);
-        compareByString(sequentialConsensus);
-        compareDirect(parallelConsensus, sequentialConsensus);
+        // Map<String, Sigma70Consensus> consensus = Sequential.run("referenceGenes.list", "Ecoli");
+//        ParallelByGenbankFile predictor = new ParallelByGenbankFile();
+//        Map<String, Sigma70Consensus> consensus = predictor.predict("referenceGenes.list", "Ecoli");
+        ParallelByReferenceGene predictor = new ParallelByReferenceGene();
+        Map<String, Sigma70Consensus> consensus = predictor.predict("referenceGenes.list", "Ecoli");
+        compareByString(consensus);
     }
-
 
     private static final Map<String, String> SEQUENTIAL_RESULTS = new HashMap<>();
     static {
