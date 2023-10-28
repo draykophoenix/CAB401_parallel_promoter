@@ -98,9 +98,25 @@ public class ParallelByGenbankFile
     public ConcurrentMap<String, Sigma70Consensus> predict(String referenceFile, String dir) throws FileNotFoundException, IOException, InterruptedException {
         List<Gene> referenceGenes = Collections.unmodifiableList(ParseReferenceGenes(referenceFile));
 
+        List<String> genbankFiles = ListGenbankFiles(dir);
+
+//        int work = (N + THREADS - 1) / THREADS;
+//        int start = work * threadID;
+//        int end = min(start + work, N);
+//
+//        for (int i = start; i < end; i++) {
+//            parallelNaiveTotal += A[i];
+//        }
+        final int NUM_THREADS = 2;
+        int numFiles = genbankFiles.size();
         List<Worker> workers = new ArrayList<>();
-        for (String filename : ListGenbankFiles(dir)) {
-            Worker worker = new Worker(filename, referenceGenes);
+
+        for (int i = 0; i < NUM_THREADS; i++) {
+            int work = (numFiles + NUM_THREADS - 1) / NUM_THREADS;
+            int start = work * i;
+            int end = Math.min((start + work), numFiles);
+
+            Worker worker = new Worker(genbankFiles.subList(start, end), referenceGenes);
             workers.add(worker);
             worker.start();
         }
@@ -113,36 +129,39 @@ public class ParallelByGenbankFile
     }
 
     private class Worker extends Thread {
-        private String filename;
+        private List<String> filenames;
         private List<Gene> referenceGenes;
 
         private Series sigma70_pattern = Sigma70Definition.getSeriesAll_Unanchored(0.7);
-        public Worker(String filename, List<Gene> referenceGenes) {
-            this.filename = filename;
+        public Worker(List<String> filenames, List<Gene> referenceGenes) {
+            this.filenames = filenames;
             this.referenceGenes = referenceGenes;
         }
         public void run() {
             String threadName = Thread.currentThread().getName() + ": ";
-            System.out.println(threadName + filename);
-            GenbankRecord record = null;
-            try {
-                record = Parse(filename);
-            } catch (IOException e) {
-                e.printStackTrace();
+            for (String filename : filenames) {
+                System.out.println(threadName + filename);
+                GenbankRecord record = null;
+                try {
+                    record = Parse(filename);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                for (Gene referenceGene : referenceGenes) {
+                    System.out.println(threadName + referenceGene.name);
+                    for (Gene gene : record.genes)
+                        if (Homologous(gene.sequence, referenceGene.sequence)) {
+                            NucleotideSequence upStreamRegion = GetUpstreamRegion(record.nucleotides, gene);
+                            Match prediction = PredictPromoter(sigma70_pattern, upStreamRegion);
+                            if (prediction != null) {
+                                consensus.get(referenceGene.name).addMatch(prediction);
+                                consensus.get("all").addMatch(prediction);
+                            }
+                        }
+                }
             }
 
-            for (Gene referenceGene : referenceGenes) {
-                System.out.println(threadName + referenceGene.name);
-                for (Gene gene : record.genes)
-                    if (Homologous(gene.sequence, referenceGene.sequence)) {
-                        NucleotideSequence upStreamRegion = GetUpstreamRegion(record.nucleotides, gene);
-                        Match prediction = PredictPromoter(sigma70_pattern, upStreamRegion);
-                        if (prediction != null) {
-                            consensus.get(referenceGene.name).addMatch(prediction);
-                            consensus.get("all").addMatch(prediction);
-                        }
-                    }
-            }
         }
     }
 }
