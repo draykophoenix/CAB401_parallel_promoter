@@ -103,15 +103,23 @@ public class ParallelByGenbankFile
         int numFiles = genbankFiles.size();
         List<Worker> workers = new ArrayList<>();
 
-        for (int i = 0; i < numThreads; i++) {
-            int work = (numFiles + numThreads - 1) / numThreads;
-            // System.out.println(i + " - work: " + work);
-            int start = work * i;
-            // System.out.println(i + " - start: " + start);
-            int end = Math.min((start + work), numFiles);
-            // System.out.println(i + " - end: " + end);
+        int end = -1;
+        int division = numFiles / numThreads;
+        int remainder = numFiles % numThreads;
 
-            Worker worker = new Worker(genbankFiles.subList(start, end), referenceGenes);
+
+        for (int i = 0; i < numThreads; i++) {
+            // Extra work for first threads
+            int work = (i < remainder)? division + 1 : division;
+//            System.out.println(i + " - work: " + work);
+
+            int start = end + 1;
+//            System.out.println(i + " - start: " + start);
+
+            end += work;
+//            System.out.println(i + " - end: " + end);
+
+            Worker worker = new Worker(genbankFiles.subList(start, end + 1), referenceGenes);
             workers.add(worker);
             worker.start();
         }

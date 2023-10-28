@@ -162,9 +162,9 @@ public class ParallelByReferenceGene
             int division = numJobs / numThreads;
             int remainder = numJobs % numThreads;
 
-            int work = division;
             // Extra work for first threads
-            if (threadsIndex < remainder) work+= 1;
+            int work = (threadsIndex < remainder)? division + 1 : division;
+
             // Shift created from extra work
             int shift = Math.min(threadsIndex, remainder);
 
