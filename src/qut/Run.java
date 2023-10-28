@@ -13,11 +13,11 @@ public class Run {
 
 //        Map<String, Sigma70Consensus> consensus = Sequential.run("referenceGenes.list", "Ecoli"); // Elapsed:158226ms
 
-        ParallelByGenbankFile predictor = new ParallelByGenbankFile(); // Elapsed:44446ms
-        Map<String, Sigma70Consensus> consensus = predictor.predict("referenceGenes.list", "Ecoli");
+//        ParallelByGenbankFile predictor = new ParallelByGenbankFile(); // Elapsed:44446ms
+//        Map<String, Sigma70Consensus> consensus = predictor.predict("referenceGenes.list", "Ecoli", 3);
 
-//        ParallelByReferenceGene predictor = new ParallelByReferenceGene(); // Elapsed:44929ms
-//        Map<String, Sigma70Consensus> consensus = predictor.predict("referenceGenes.list", "Ecoli");
+        ParallelByReferenceGene predictor = new ParallelByReferenceGene(); // Elapsed:44929ms
+        Map<String, Sigma70Consensus> consensus = predictor.predict("referenceGenes.list", "Ecoli", 9);
 
         long endTime = System.currentTimeMillis();
         long duration = endTime - startTime;

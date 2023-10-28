@@ -102,23 +102,31 @@ public class ParallelByReferenceGene
         return record;
     }
 
-    public ConcurrentMap<String, Sigma70Consensus> predict(String referenceFile, String dir) throws FileNotFoundException, IOException, InterruptedException {
+    public ConcurrentMap<String, Sigma70Consensus> predict(String referenceFile, String dir, int numThreads) throws FileNotFoundException, IOException, InterruptedException {
         List<Gene> referenceGenes = Collections.unmodifiableList(ParseReferenceGenes(referenceFile));
 
-        List<Worker> workers = new ArrayList<>();
-        for (String filename : ListGenbankFiles(dir)) {
-            GenbankRecord record = null;
+        List<String> genbankFiles = ListGenbankFiles(dir);
+
+        List<GenbankRecord> records = new ArrayList<>(); // UNSAFE?
+        for (String filename : genbankFiles) {
             try {
-                record = Parse(filename);
+                records.add(Parse(filename));
             } catch (IOException e) {
                 e.printStackTrace();
             }
+        }
 
-            for (Gene referenceGene : referenceGenes) {
-                Worker worker = new Worker(filename, referenceGenes, record, referenceGene);
-                workers.add(worker);
-                worker.start();
-            }
+        List<Worker> workers = new ArrayList<>();
+
+        int numFiles = genbankFiles.size();
+        int numReferenceGenes = referenceGenes.size();
+        int numJobs = numFiles * numReferenceGenes;
+
+        Worker.setConstants(numThreads, numReferenceGenes, numJobs);
+        for (int i = 0; i < numThreads; i++) {
+            Worker worker = new Worker(referenceGenes, records, i);
+            workers.add(worker);
+            worker.start();
         }
 
         for (Worker worker : workers) {
@@ -129,32 +137,64 @@ public class ParallelByReferenceGene
     }
 
     private class Worker extends Thread {
-        private String filename;
+        private static int numJobs;
+        private static int numThreads;
+        private static int numReferenceGenes;
         private List<Gene> referenceGenes;
-        private GenbankRecord record;
-        private Gene referenceGene;
+        private List<GenbankRecord> records;
+        private int threadsIndex;
 
         private Series sigma70_pattern = Sigma70Definition.getSeriesAll_Unanchored(0.7);
-        public Worker(String filename, List<Gene> referenceGenes, GenbankRecord record, Gene referenceGene) {
-            this.filename = filename;
+        public Worker(List<Gene> referenceGenes, List<GenbankRecord> records, int threadsIndex) {
             this.referenceGenes = referenceGenes;
-            this.record = record;
-            this.referenceGene = referenceGene;
+            this.records = records;
+            this.threadsIndex = threadsIndex;
+        }
+        public static void setConstants(int numThreads, int numReferenceGenes, int numJobs) {
+            Worker.numThreads = numThreads;
+            Worker.numReferenceGenes = numReferenceGenes;
+            Worker.numJobs = numJobs;
+
         }
         public void run() {
             String threadName = Thread.currentThread().getName() + ": ";
-            System.out.println(threadName + referenceGene.name);
 
-            for (Gene gene : record.genes)
-                if (Homologous(gene.sequence, referenceGene.sequence)) {
-                    NucleotideSequence upStreamRegion = GetUpstreamRegion(record.nucleotides, gene);
-                    Match prediction = PredictPromoter(sigma70_pattern, upStreamRegion);
-                    if (prediction != null) {
-                        consensus.get(referenceGene.name).addMatch(prediction);
-                        consensus.get("all").addMatch(prediction);
+            int division = numJobs / numThreads;
+            int remainder = numJobs % numThreads;
+
+            int work = division;
+            // Extra work for first threads
+            if (threadsIndex < remainder) work+= 1;
+            // Shift created from extra work
+            int shift = Math.min(threadsIndex, remainder);
+
+//            System.out.println(threadName + " - work: " + work);
+            int start = division * threadsIndex + shift;
+//            System.out.println(threadName + " - start: " + start);
+            int end = start + work;
+//            System.out.println(threadName + " - end: " + end);
+
+
+            for (int i = start; i < end; i++) {
+                int posReferenceGene = i % numReferenceGenes;
+                int posFile = i / numReferenceGenes;
+
+                Gene referenceGene = referenceGenes.get(posReferenceGene);
+                GenbankRecord record = records.get(posFile);
+
+                System.out.println(threadName + "index: " + i + " file: " + posFile + " gene: " + posReferenceGene + " (" + referenceGene.name + ")");
+
+                for (Gene gene : record.genes) {
+                    if (Homologous(gene.sequence, referenceGene.sequence)) {
+                        NucleotideSequence upStreamRegion = GetUpstreamRegion(record.nucleotides, gene);
+                        Match prediction = PredictPromoter(sigma70_pattern, upStreamRegion);
+                        if (prediction != null) {
+                            consensus.get(referenceGene.name).addMatch(prediction);
+                            consensus.get("all").addMatch(prediction);
+                        }
                     }
                 }
-
+            }
         }
     }
 }

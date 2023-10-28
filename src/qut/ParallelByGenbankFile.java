@@ -95,26 +95,21 @@ public class ParallelByGenbankFile
         return record;
     }
 
-    public ConcurrentMap<String, Sigma70Consensus> predict(String referenceFile, String dir) throws FileNotFoundException, IOException, InterruptedException {
+    public ConcurrentMap<String, Sigma70Consensus> predict(String referenceFile, String dir, Integer numThreads) throws FileNotFoundException, IOException, InterruptedException {
         List<Gene> referenceGenes = Collections.unmodifiableList(ParseReferenceGenes(referenceFile));
 
         List<String> genbankFiles = ListGenbankFiles(dir);
 
-//        int work = (N + THREADS - 1) / THREADS;
-//        int start = work * threadID;
-//        int end = min(start + work, N);
-//
-//        for (int i = start; i < end; i++) {
-//            parallelNaiveTotal += A[i];
-//        }
-        final int NUM_THREADS = 2;
         int numFiles = genbankFiles.size();
         List<Worker> workers = new ArrayList<>();
 
-        for (int i = 0; i < NUM_THREADS; i++) {
-            int work = (numFiles + NUM_THREADS - 1) / NUM_THREADS;
+        for (int i = 0; i < numThreads; i++) {
+            int work = (numFiles + numThreads - 1) / numThreads;
+            // System.out.println(i + " - work: " + work);
             int start = work * i;
+            // System.out.println(i + " - start: " + start);
             int end = Math.min((start + work), numFiles);
+            // System.out.println(i + " - end: " + end);
 
             Worker worker = new Worker(genbankFiles.subList(start, end), referenceGenes);
             workers.add(worker);
@@ -139,6 +134,7 @@ public class ParallelByGenbankFile
         }
         public void run() {
             String threadName = Thread.currentThread().getName() + ": ";
+            long innerStartTime = System.currentTimeMillis();
             for (String filename : filenames) {
                 System.out.println(threadName + filename);
                 GenbankRecord record = null;
@@ -161,6 +157,9 @@ public class ParallelByGenbankFile
                         }
                 }
             }
+            long innerEndTime = System.currentTimeMillis();
+            long innerDuration = innerEndTime - innerStartTime;
+            System.out.println(threadName + "Elapsed:" + innerDuration + "ms" );
 
         }
     }
