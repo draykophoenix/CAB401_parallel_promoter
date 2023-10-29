@@ -11,10 +11,10 @@ public class Run {
     public static void main(String[] args) throws FileNotFoundException, IOException, InterruptedException {
         long startTime = System.currentTimeMillis();
 
-//        Map<String, Sigma70Consensus> consensus = Sequential.run("referenceGenes.list", "Ecoli"); // Elapsed:158226ms
+        Map<String, Sigma70Consensus> consensus = Sequential.run("referenceGenes.list", "Ecoli"); // Elapsed:158226ms
 
-        ParallelByGenbankFile predictor = new ParallelByGenbankFile(); // Elapsed:44446ms
-        Map<String, Sigma70Consensus> consensus = predictor.predict("referenceGenes.list", "Ecoli", 3);
+//        ParallelByGenbankFile predictor = new ParallelByGenbankFile(); // Elapsed:44446ms
+//        Map<String, Sigma70Consensus> consensus = predictor.predict("referenceGenes.list", "Ecoli", 3);
 
 //        ParallelByReferenceGene predictor = new ParallelByReferenceGene(); // Elapsed:44929ms
 //        Map<String, Sigma70Consensus> consensus = predictor.predict("referenceGenes.list", "Ecoli", 9);

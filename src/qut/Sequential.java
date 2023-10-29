@@ -21,6 +21,8 @@ public class Sequential
         complement['A'] = 'T'; complement['a'] = 't';
     }
 
+    private static List<Long> sw_times = new ArrayList<>();
+
 
     private static List<Gene> ParseReferenceGenes(String referenceFile) throws FileNotFoundException, IOException
     {
@@ -40,9 +42,14 @@ public class Sequential
         return referenceGenes;
     }
 
-    private static boolean Homologous(PeptideSequence A, PeptideSequence B)
+    private static boolean Homologous(PeptideSequence A, PeptideSequence B) // Modified
     {
-        return SmithWatermanGotoh.align(new Sequence(A.toString()), new Sequence(B.toString()), BLOSUM_62, 10f, 0.5f).calculateScore() >= 60;
+        long startTime = System.nanoTime();
+        boolean pass = SmithWatermanGotoh.align(new Sequence(A.toString()), new Sequence(B.toString()), BLOSUM_62, 10f, 0.5f).calculateScore() >= 60;
+        long endTime = System.nanoTime();
+        long duration = endTime - startTime;
+        sw_times.add(duration);
+        return pass;
     }
 
     private static NucleotideSequence GetUpstreamRegion(NucleotideSequence dna, Gene gene)
@@ -115,9 +122,16 @@ public class Sequential
                             consensus.get("all").addMatch(prediction);
                         }
                     }
+                System.out.println( "sw stats for " + referenceGene.name +
+                        " size: " + sw_times.size() +
+                        " average: " + sw_times.stream().mapToDouble(d -> d).average() +
+                        " min: " + Collections.min(sw_times).toString() +
+                        " max: " + Collections.max(sw_times).toString()
+                );
+                //sw_times.clear();
             }
         }
 
-        return consensus;
+        return consensus; // Modified
     }
 }
